@@ -1,15 +1,13 @@
-# PlatformIO
-.pio/
-.pioenvs/
-.vscode/
-*.pio
+# Arduino build files
+*.bin
+*.elf
+*.hex
+*.eep
+*.eep.hex
+*.elf.json
+.build/
+*.log
 
-# Secrets
-src/secrets.h
-
-# OS
+# System files
 .DS_Store
 Thumbs.db
-
-# Build
-build/

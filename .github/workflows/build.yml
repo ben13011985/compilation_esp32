@@ -1,0 +1,36 @@
+name: Build ESP32 AP OTA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+        with:
+          version: '0.33.0'
+
+      - name: Install ESP32 core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Compile sketch
+        run: |
+          mkdir -p build
+          arduino-cli compile --fqbn esp32:esp32:esp32 ESP32_AP_OTA.ino --output-dir build
+
+      - name: Upload compiled .bin
+        uses: actions/upload-artifact@v3
+        with:
+          name: ESP32-OTA-Bin
+          path: build/esp32:esp32:esp32/ESP32_AP_OTA.ino.bin

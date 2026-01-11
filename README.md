@@ -1,51 +1,34 @@
-```markdown
-# OTA_ESP32_BM
+# ESP32 AP OTA
 
-Ce dépôt contient un exemple minimal PlatformIO pour construire et flasher un firmware `.bin` pour un ESP32 WROOM, avec prise en charge d'OTA (ArduinoOTA).
+Projet ESP32 qui crée son propre point d'accès Wi-Fi pour OTA.  
+LED clignote pendant OTA et passe en blink normal après timeout.
 
-Prérequis
-- PlatformIO CLI (`pip install platformio`) ou PlatformIO dans VSCode.
-- Câble USB (pour le premier flash si nécessaire).
-- Réseau Wi‑Fi pour l'OTA.
-- (Optionnel) GitHub CLI `gh` pour créer le repo depuis la ligne de commande.
+## Paramètres
 
-Structure
-- `platformio.ini` : configuration PlatformIO
-- `src/main.cpp` : exemple avec WiFi + ArduinoOTA + blink
-- `src/secrets.example.h` : modèle pour créer `src/secrets.h` (ne pas commiter `secrets.h`)
-- `.gitignore`
-- `LICENSE` (MIT)
+- Point d'accès : `test_OTA`  
+- Mot de passe : `1234`  
+- IP fixe : `192.168.1.123`  
+- Timeout OTA : 1 minute  
+- LED : GPIO 2  
+- Blink normal : 1 s
 
-Installer et builder
-1. Créer `src/secrets.h` à partir de `src/secrets.example.h` et renseigner `WIFI_SSID` et `WIFI_PASS`.
-2. Construire :
-   ```
-   pio run
-   ```
-3. Récupérer la .bin :
-   ```
-   .pio/build/esp32dev/firmware.bin
-   ```
+## Compilation avec Arduino IDE
 
-Uploader (USB)
-- Avec PlatformIO :
-  ```
-  pio run -t upload
-  ```
-  (ou `pio run -t upload -e esp32dev --upload-port /dev/ttyUSB0`)
+1. Ouvrir `ESP32_AP_OTA.ino` dans Arduino IDE
+2. Choisir la carte ESP32 : **ESP32 Dev Module**
+3. Partition scheme : **Default 4MB with OTA**
+4. Compiler et uploader via USB pour la première fois
+5. Après démarrage, connecter un téléphone au Wi-Fi `test_OTA`
+6. Ouvrir un navigateur → `http://192.168.1.123`
+7. Choisir le fichier `.bin` si mise à jour OTA
 
-Uploader Over‑The‑Air (OTA)
-- Option A (PlatformIO espota) :
-  - Décommentez et ajustez les lignes `upload_protocol = espota` et `upload_port = <device_ip>` dans `platformio.ini` (ou utilisez la ligne de commande `pio run -t upload --upload-port <device_ip>`).
-  - Puis : `pio run -t upload`
+## Structure du code
 
-- Option B (esptool) : pas applicable pour OTA. Utilisez PlatformIO/espota ou un outil compatible.
+- `setup()` : démarre AP, serveur web OTA, initialise LED
+- `loop()` : gère le timeout OTA et le blink LED
+- LED rapide pendant OTA, LED lente après timeout
 
-Notes
-- Copiez `src/secrets.example.h` vers `src/secrets.h` et remplissez `WIFI_SSID`/`WIFI_PASS`.
-- Le nom d'hôte peut être modifié dans `secrets.h` (HOSTNAME).
-- Le `board = esp32dev` convient pour la plupart des modules WROOM. Si vous avez une carte spécifique, indiquez-le et j'ajusterai.
+## Notes
 
-Licence
-- MIT
-```
+- Ne jamais uploader un `.bin` qui ne contient pas le code OTA, sinon tu perds la capacité OTA
+- `.gitignore` inclus pour ignorer les fichiers temporaires Arduino
