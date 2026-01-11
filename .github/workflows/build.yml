@@ -3,8 +3,6 @@ name: Build ESP32 AP OTA
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   build:
@@ -27,10 +25,10 @@ jobs:
       - name: Compile sketch
         run: |
           mkdir -p build
-          arduino-cli compile --fqbn esp32:esp32:esp32 ESP32_AP_OTA.ino --output-dir build
+          arduino-cli compile --fqbn esp32:esp32:esp32dev ESP32_AP_OTA.ino --output-dir build
 
       - name: Upload compiled .bin
         uses: actions/upload-artifact@v4
         with:
           name: ESP32-OTA-Bin
-          path: build/esp32:esp32:esp32/ESP32_AP_OTA.ino.bin
+          path: build/esp32:esp32:esp32dev/ESP32_AP_OTA.ino.bin
