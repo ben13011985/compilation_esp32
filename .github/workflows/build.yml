@@ -17,18 +17,41 @@ jobs:
         with:
           version: '0.33.0'
 
+      - name: Show arduino-cli version
+        run: |
+          arduino-cli version
+          arduino-cli core update-index
+
       - name: Install ESP32 core
         run: |
-          arduino-cli core update-index
           arduino-cli core install esp32:esp32
+
+      - name: Show repo files (debug)
+        run: |
+          echo "workspace files:"
+          ls -la
 
       - name: Compile sketch
         run: |
+          # Si votre sketch est dans un dossier ESP32_AP_OTA/ contenant ESP32_AP_OTA.ino :
+          # cd ESP32_AP_OTA || exit 1
+          # arduino-cli compile --fqbn esp32:esp32:esp32dev . --output-dir ../build
+          #
+          # Si le .ino est à la racine (non recommandé), mettez le chemin approprié.
           mkdir -p build
-          arduino-cli compile --fqbn esp32:esp32:esp32dev ESP32_AP_OTA.ino --output-dir build
+          arduino-cli compile --fqbn esp32:esp32:esp32dev ESP32_AP_OTA --output-dir build
+        # Remarque : on passe le dossier de sketch (ESP32_AP_OTA). Assurez-vous que le dossier existe.
+
+      - name: List build output (debug)
+        run: |
+          echo "Build output:"
+          find build -maxdepth 5 -type d -print
+          find build -type f -print -exec ls -l {} \;
 
       - name: Upload compiled .bin
         uses: actions/upload-artifact@v4
         with:
           name: ESP32-OTA-Bin
-          path: build/esp32:esp32:esp32dev/ESP32_AP_OTA.ino.bin
+          path: |
+            build/**/*.bin
+            build/*.bin
