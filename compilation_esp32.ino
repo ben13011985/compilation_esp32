@@ -49,7 +49,7 @@ button { width:90%; height:90px; font-size:32px; margin:15px auto; display:block
 
 <h1>Courant de charge</h1>
 
-<button id="off"  onclick="activate('off','/off')">OFFfff</button>
+<button id="off"  onclick="activate('off','/off')">OFF</button>
 <button id="a6"   onclick="activate('a6','/6a')">6 A</button>
 <button id="a8"   onclick="activate('a8','/8a')">8 A</button>
 <button id="a10"  onclick="activate('a10','/10a')">10 A</button>
