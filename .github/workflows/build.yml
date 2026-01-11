@@ -31,27 +31,15 @@ jobs:
           echo "workspace files:"
           ls -la
 
+      # 4️⃣ Compile le sketch pour ESP32-WROOM-DA
       - name: Compile sketch
         run: |
-          # Si votre sketch est dans un dossier ESP32_AP_OTA/ contenant ESP32_AP_OTA.ino :
-          # cd ESP32_AP_OTA || exit 1
-          # arduino-cli compile --fqbn esp32:esp32:esp32dev . --output-dir ../build
-          #
-          # Si le .ino est à la racine (non recommandé), mettez le chemin approprié.
           mkdir -p build
-          arduino-cli compile --fqbn esp32:esp32:esp32dev ESP32_AP_OTA --output-dir build
-        # Remarque : on passe le dossier de sketch (ESP32_AP_OTA). Assurez-vous que le dossier existe.
+          arduino-cli compile --fqbn esp32:esp32:esp32da ESP32_AP_OTA.ino --output-dir build
 
-      - name: List build output (debug)
-        run: |
-          echo "Build output:"
-          find build -maxdepth 5 -type d -print
-          find build -type f -print -exec ls -l {} \;
-
+      # 5️⃣ Upload artifact .bin
       - name: Upload compiled .bin
         uses: actions/upload-artifact@v4
         with:
           name: ESP32-OTA-Bin
-          path: |
-            build/**/*.bin
-            build/*.bin
+          path: build/esp32:esp32:esp32da/ESP32_AP_OTA.ino.bi
