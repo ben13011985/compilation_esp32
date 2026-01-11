@@ -1,0 +1,15 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.vscode/
+*.pio
+
+# Secrets
+src/secrets.h
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+build/
