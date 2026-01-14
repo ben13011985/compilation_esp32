@@ -1,8 +1,9 @@
-name: Build ESP32 AP OTA
+name: Compilation ESP32
 
 on:
   push:
-    branches: [main]
+    branches: [ main, master ]
+  pull_request:
 
 jobs:
   build:
@@ -10,25 +11,42 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Arduino CLI
-        uses: arduino/setup-arduino-cli@v1
-        with:
-          version: '0.33.0'
+      - name: Install Arduino CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          sudo mv bin/arduino-cli /usr/local/bin/arduino-cli
+          arduino-cli version
 
       - name: Install ESP32 core
         run: |
+          arduino-cli config init
+          arduino-cli config set board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
-      - name: Compile sketch
+      - name: Install libraries (optional)
         run: |
-          mkdir -p build
-          arduino-cli compile --fqbn esp32:esp32:esp32da . --output-dir build
+          arduino-cli lib update-index
+          # Exemple :
+          # arduino-cli lib install "WiFi"
 
-      - name: Upload compiled .bin
-        uses: actions/upload-artifact@v4
-        with:
-          name: ESP32-OTA-Bin
-          path: build/**/*.bin
+      - name: Compile ESP32 sketch (auto-detect .ino)
+        run: |
+          set -e
+          mkdir -p build
+
+          echo "🔍 Recherche du fichier .ino..."
+          SKETCH=$(find . -type f -name "*.ino" -not -path "./build/*" | head -n 1)
+
+          if [ -z "$SKETCH" ]; then
+            echo "❌ Aucun fichier .ino trouvé"
+            exit 1
+          fi
+
+          echo "✅ Sketch détecté : $SKETCH"
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32da \
+            "$SKETCH" \
+            --output-dir build
