@@ -1,9 +1,10 @@
+#include "config_v7.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
 #include "driver/ledc.h"
 
-#include "lecture_puissance.h"
+#include "lecture_puissance_plus.h"
 
 // ================= WIFI AP =================
 const char* ssid = "test_bm";
@@ -26,14 +27,18 @@ WebServer server(80);
 // ================= COURANT/PUISSANCE =================
 // ⚠️ GPIO13 = ADC2 => peut être instable avec WiFi selon cartes/SDK.
 // Tu as demandé à rester en GPIO13 : on applique.
-#define PIN_MESURE    13
-#define RATIO_AZCT02  100.0f     // A / V RMS (à ajuster)
+#define PIN_MESURE    34
+#define RATIO_AZCT02  7.8*100.0f     // A / V RMS (à ajuster)
 #define VRMS_GRID     230.0f
 
-LecturePuissance mesure(PIN_MESURE, RATIO_AZCT02, VRMS_GRID);
+LecturePuissancePlus mesure(PIN_MESURE, RATIO_AZCT02, VRMS_GRID);
 
 volatile float g_IrmsA = 0.0f;
 volatile float g_PkW   = 0.0f;
+
+// Synchronisation entre la task de mesure et le serveur Web
+// (évite de lire des floats pendant qu'ils sont en cours d'écriture)
+portMUX_TYPE g_mux = portMUX_INITIALIZER_UNLOCKED;
 
 enum Mode : uint8_t { MODE_OFF=0, MODE_6A, MODE_8A, MODE_10A, MODE_12A, MODE_AUTO };
 volatile Mode g_mode = MODE_OFF;
@@ -209,6 +214,12 @@ void mesureTask(void* pv) {
   // Atténuation large (si ton signal peut monter)
   analogSetAttenuation(ADC_11db);
 
+
+  Serial.println("test_ADC");
+  Serial.println(analogRead(PIN_MESURE));
+
+
+
   Serial.println("Calibration puissance/courant (10s)...");
   mesure.startCalibration(10000);
   g_IrmsA = 0.0f;
@@ -221,12 +232,41 @@ void mesureTask(void* pv) {
     vTaskDelayUntil(&lastWake, period);
 
     const bool newVal = mesure.sample();
-    if (mesure.isCalibrated() && newVal) {
-      g_IrmsA = mesure.getCurrentRMS_A();
-      g_PkW   = mesure.getPower_kW();
-      Serial.print("P = "); Serial.print((float)g_PkW, 3);
-      Serial.print(" kW | Irms = "); Serial.print((float)g_IrmsA, 2);
-      Serial.print(" A | offsetLSB="); Serial.println(mesure.getOffsetLSB(), 1);
+	    if (mesure.isCalibrated() && newVal) {
+	      // Mise à jour des valeurs affichées sur l'interface Web
+	      // (copie locale + section critique)
+	      const float irms = mesure.getIrmsA();
+	      const float pkw  = mesure.getPowerkW();
+	      portENTER_CRITICAL(&g_mux);
+	      g_IrmsA = irms;
+	      g_PkW   = pkw;
+	      portEXIT_CRITICAL(&g_mux);
+      // Serial.print("P = "); Serial.print((float)g_PkW, 3);
+      // Serial.print(" kW | Irms = "); Serial.print((float)g_IrmsA, 2);
+      // Serial.print(" A | offsetLSB="); Serial.println(mesure.getOffsetLSB(), 1);
+
+Serial.print("LSB[min,max,mean,offset,sumAbsCentered]=");
+Serial.print(mesure.getMinLSB());
+Serial.print(",");
+Serial.print(mesure.getMaxLSB());
+Serial.print(",");
+Serial.print(mesure.getMeanLSB());
+Serial.print(",");
+Serial.print(mesure.getOffsetLSB());
+Serial.print(",");
+Serial.print(mesure.getSumAbsCenteredLSB());
+
+Serial.print(" | Irms[A]=");
+	      Serial.print(irms, 3);
+
+Serial.print(" | P[kW]=");
+	      Serial.print(pkw, 3);
+
+Serial.print(" | N=");
+Serial.println((unsigned long)mesure.getSampleCountInLastWindow());
+
+
+
     }
   }
 }
@@ -317,9 +357,14 @@ void setupRoutes() {
 
   // status JSON
   server.on("/status", [](){
+    float pkw, irms;
+    portENTER_CRITICAL(&g_mux);
+    pkw  = g_PkW;
+    irms = g_IrmsA;
+    portEXIT_CRITICAL(&g_mux);
     String s = "{";
-    s += "\"pkw\":" + String((float)g_PkW, 4) + ",";
-    s += "\"irms\":" + String((float)g_IrmsA, 4) + ",";
+    s += "\"pkw\":" + String((float)pkw, 4) + ",";
+    s += "\"irms\":" + String((float)irms, 4) + ",";
     s += "\"setA\":" + String((int)g_setA) + ",";
     s += "\"mode\":\"" + String(modeToStr((Mode)g_mode)) + "\"";
     s += "}";
@@ -384,7 +429,7 @@ void setup() {
 
   // Init mesure
   mesure.begin(1000);
-  mesure.setRmsWindow(10000);
+  mesure.setWindowMs(10000);
 
   setupRoutes();
   server.begin();
